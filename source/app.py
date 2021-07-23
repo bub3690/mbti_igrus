@@ -1,10 +1,13 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify,g
 from flask.json import JSONEncoder,current_app
 from sqlalchemy import create_engine,text
 import bcrypt
-import jwt
+
 import datetime
 
+#로그인 인증 관련
+import jwt
+import auth
 
 def divideMbti(user_data):
      # list 종류 E_I,S_N,T_F,J_P  각 리스트의 값이 0이면 앞, 1이면 뒤와 대응
@@ -114,6 +117,7 @@ def get_user(user_id):
         'profile' : user['profile']
     } if user else None
 
+
 def get_pass(user_mail):
     user = current_app.database.execute(text("""
             SELECT 
@@ -127,6 +131,7 @@ def get_pass(user_mail):
     }).fetchone()
     return user
 
+
 class CustomJSONEncoder(JSONEncoder):
     def default(self,obj):
         # 만약 set면 list로 바꿔서 리턴하고
@@ -134,6 +139,7 @@ class CustomJSONEncoder(JSONEncoder):
             return list(obj)
         # 아니면 그냥 원래 jsonencoder 사용해서 변환
         return JSONEncoder.default(self,obj)
+
 
 def create_app(test_config=None):
     app=Flask(__name__)
@@ -158,6 +164,7 @@ def create_app(test_config=None):
         new_user    = get_user(new_user_id)
 
         return jsonify(new_user)
+
     @app.route('/login',methods=['POST'])
     def login():
         credential = request.json
@@ -173,7 +180,7 @@ def create_app(test_config=None):
                 'exp':datetime.datetime.utcnow()+datetime.timedelta(seconds=60*60*24)
             }
             token = jwt.encode(payload,app.config['JWT_SECRET_KEY'])
-            #전송을 위해 UTF-8로만 변경
+
             return jsonify({
                 'access_token':token
             })
@@ -182,6 +189,7 @@ def create_app(test_config=None):
 
 
     @app.route("/mbti", methods=["POST"])
+    @auth.login_required
     def getmbti():
          '''
          예시 데이터 구조(JSON 파일)
@@ -192,6 +200,8 @@ def create_app(test_config=None):
               "J_P" : [0,0,0,0,0,0,0,0,0,0]
          }
          '''
+
+         print('글로벌 변수',g.user_id)
          user_data = request.json  # user_data는 4개의 리스트가 들어온다고 가정
          #print(user_data)
          # user_data를 함수에 넣어서 결과를 받는다.

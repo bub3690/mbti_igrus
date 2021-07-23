@@ -53,3 +53,27 @@ updated_at timestamp null default null on update current_timestamp,
 primary key (id),
 unique key email (email)
 );
+
+select * from users;
+delete from users where id=1;
+
+
+
+
+create database mbti_user;
+show databases;
+use mbti_user;
+
+create table star(
+	point int not null,
+    id int not null auto_increment,
+    primary key (id)
+    );
+
+select * from star;
+
+insert into star(
+	point
+    ) values(
+    :point
+    );
