@@ -77,3 +77,12 @@ insert into star(
     ) values(
     :point
     );
+    
+    
+# mbti 유저 테이블에서 파일 추가
+use mbti_user;
+alter table users add column profile_img varchar(32) null;
+select * from users;
+
+
+

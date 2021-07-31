@@ -1,13 +1,23 @@
-from flask import Flask, request, jsonify,g
+from flask import Flask, request, jsonify, g
 from flask.json import JSONEncoder,current_app
 from sqlalchemy import create_engine,text
 import bcrypt
 
 import datetime
+import os
 
 #로그인 인증 관련
 import jwt
-import auth
+import auth # auth.py 파일
+
+#파일 업로드
+from werkzeug.utils import secure_filename # 스크립트를 통해 경로를 알아내는것을 방지한다.
+
+UPLOAD_FOLDER = '../profiles'
+ALLOWED_EXTENSIONS = set(['png', 'jpg', 'jpeg', 'gif'])
+
+
+
 
 def divideMbti(user_data):
      # list 종류 E_I,S_N,T_F,J_P  각 리스트의 값이 0이면 앞, 1이면 뒤와 대응
@@ -117,7 +127,7 @@ def get_user(user_id):
         'profile' : user['profile']
     } if user else None
 
-
+#해싱 패스워드 확인하기위한 테스트.
 def get_pass(user_mail):
     user = current_app.database.execute(text("""
             SELECT 
@@ -131,6 +141,28 @@ def get_pass(user_mail):
     }).fetchone()
     return user
 
+
+# 프로필 사진업로드. post 시에 호출되는 함수에서 다시 호출해줘야함.
+# 회원가입시, 프로필 수정시 둘다 필요하기에. 분리
+def upload_profile(user_email, file):
+    # file = request.files['file']
+    # print(file.filename)
+    filename = secure_filename(file.filename)
+    profile_path = UPLOAD_FOLDER+'/'+user_email
+    os.makedirs(profile_path, exist_ok=True)# 각 유저마다 폴더를 만들어주기 위해. 폴더를 생성. exists_ok=True가 폴더를 만드는것.
+    file.save(os.path.join(profile_path, filename))
+
+    #db upload
+    current_app.database.execute(text("""
+            UPDATE users SET profile_img = :profile_path
+            WHERE email=:user_email
+        """),{
+        'profile_path':filename,
+        'user_email':user_email
+    })
+
+
+    return
 
 class CustomJSONEncoder(JSONEncoder):
     def default(self,obj):
@@ -152,6 +184,16 @@ def create_app(test_config=None):
                              max_overflow=0)
     app.database= database
 
+    #가입 후, 호출되는 프로필 이미지 등록.
+    @app.route("/profile-img-upload",methods=['POST'])
+    def profile_upload():
+        print(request.files)
+        user_email = request.form.get('email')
+        profile_img = request.files['profile_img']
+        upload_profile(user_email=user_email,
+                       file=profile_img)
+        result = {'user_email':user_email, 'profile_img':profile_img.filename}
+        return jsonify(result)
 
     @app.route("/sign-up", methods=['POST'])
     def sign_up():
@@ -207,4 +249,7 @@ def create_app(test_config=None):
          # user_data를 함수에 넣어서 결과를 받는다.
          result = divideMbti(user_data)
          return result, 200
+
+
+
     return app
