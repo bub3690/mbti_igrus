@@ -2,8 +2,8 @@
 import jwt
 from functools import wraps
 from flask import request, Response, g
-from flask.json import JSONEncoder,current_app
-import app
+from flask.json import current_app
+import _app
 #flask의 g는 글로벌 변수
 
 def login_required(f):
@@ -22,7 +22,7 @@ def login_required(f):
 
             user_id = payload['user_id']
             g.user_id = user_id
-            g.user = app.get_user(user_id) if user_id else None
+            g.user = _app.get_user(user_id) if user_id else None
         else:
             return Response(status=401)
 
